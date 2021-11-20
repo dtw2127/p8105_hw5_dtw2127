@@ -1,0 +1,197 @@
+---
+title: "p8105_hw5_dtw2127"
+author: "Dee Wang"
+date: "18/11/2021"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(purrr)
+
+knitr::opts_chunk$set(
+  fig.width = 6,
+  fig.asp = .6,
+  out.width = "90%"
+)
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+scale_colour_discrete = scale_color_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
+```
+
+## Problem 1
+
+First let's read in the data from the Washington Post, and do some data cleaning.  
+
+```{r}
+homicide_df = 
+  read_csv("./data/homicide-data.csv", na = c("", "Unknown")) %>%
+  mutate(city_state = str_c(city, state), 
+         resolution = case_when(
+           disposition == "Closed without arrest" ~ "unsolved",
+           disposition == "Open/No arrest" ~ "unsolved",
+           disposition == "Closed by arrest" ~ "solved"
+         )) %>% 
+  relocate(city_state) %>% 
+  filter(city_state != "TulsaAL")
+```
+
+We will focus on Baltimore, MD.
+
+```{r}
+baltimore_df = 
+  homicide_df %>% 
+  filter(city_state == "BaltimoreMD") 
+
+baltimore_summary = 
+baltimore_df %>% 
+  summarize(
+    unsolved = sum(resolution == "unsolved"), 
+    n = n()
+  )
+
+baltimore_test = 
+prop.test(
+  x = baltimore_summary %>% pull(unsolved),
+  n = baltimore_summary %>% pull(n)
+)
+
+baltimore_test %>% 
+  broom::tidy()
+
+```
+
+We'll iterate across cities. First, we write a function. 
+
+```{r}
+prop_test_function = function(city_df){
+
+city_summary = 
+city_df %>% 
+  summarize(
+    unsolved = sum(resolution == "unsolved"), 
+    n = n()
+  )
+
+city_test = 
+prop.test(
+  x = city_summary %>% pull(unsolved),
+  n = city_summary %>% pull(n)
+)
+
+return(city_test)
+
+}
+
+```
+
+Next, let's iterate across all cities.
+
+```{r}
+results_df = 
+  homicide_df %>% 
+  nest(data = uid:resolution) %>% 
+  mutate(test_results = map(data, prop_test_function), 
+         tidy_results = map(test_results, broom::tidy)
+         ) %>% 
+  select(city_state, tidy_results) %>% 
+  unnest(tidy_results) %>%
+  select(city_state, estimate, starts_with("conf"))
+
+```
+
+We'll make a plot showing estimates and confidence intervals. 
+
+```{r}
+results_df %>% 
+  mutate(city_state = fct_reorder(city_state, estimate)) %>% 
+  ggplot(aes(x = city_state, y = estimate)) + 
+  geom_point() + 
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+```
+
+## Problem 2
+
+First let's read in the data and create a tidy dataframe that contains data from all participants. We'll start with a dataframe that contains all the file names, and then iterate over the file names and read in data for each subject using the map statement. Then we'll tidy the result (create columns for control arm and subject id, and use pivot_longer to tidy data). 
+
+```{r, message = FALSE}
+
+data = 
+  tibble(
+  files = list.files("./hw5_data/data/", full.names = TRUE)
+) %>% mutate(summary = map(files, read_csv)) %>% 
+  unnest(summary) %>% 
+  mutate(subject_id = str_sub(files, 21, 22), 
+         arm = str_sub(files, 17, 19)) %>% 
+  pivot_longer(week_1:week_8, 
+               names_to = "week", 
+               names_prefix = "week_",
+               values_to = "observation_values")
+
+```
+Using the tidy dataset, we'll create a spaghetti plot showing observations on each subject over time. 
+
+```{r}
+data %>% 
+  group_by(subject_id, week) %>% 
+  ggplot(aes(x = week, y = observation_values, color = subject_id)) + 
+  geom_point() + 
+  geom_line(aes(group = subject_id)) + 
+  facet_grid( . ~arm)
+```
+
+For the control arm group, there isn't an obvious trend in observation values over time. For the experimental group, there is an increasing trend in observation values as the number of weeks increases. 
+
+## Problem 3
+
+First, let's read in the iris dataset. 
+
+```{r}
+
+set.seed(10)
+
+iris_with_missing = iris %>% 
+  map_df(~replace(.x, sample(1:150, 20), NA)) %>% 
+  mutate(Species = as.character(Species))
+
+```
+
+We want to write a function that takes a vector as an argument, replaces missing numeric values with the mean of non-missing values, and replaces missing character values with "virginica" and then returns a resulting vector. 
+
+```{r}
+fill_in_missing = function(vector){
+
+  if(is.numeric(vector)){
+
+  vector = replace_na(vector, mean(vector, na.rm = TRUE)) %>% round(2)
+  return(vector)
+  
+  }
+  
+  else if(is.character(vector)){
+  vector = replace_na(vector, "virginica")
+  return(vector)
+  
+  }
+}
+
+```
+
+We'll use the map statement to apply this function to columns of iris_with_missing. 
+
+```{r}
+map(iris_with_missing, fill_in_missing)
+```
+
+Here, we use the map_dfc function to return a data frame with all vectors. 
+
+```{r}
+map_dfc(iris_with_missing, fill_in_missing)
+```
+
