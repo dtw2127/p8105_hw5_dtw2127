@@ -32,7 +32,8 @@ homicide_df =
     ## i Use `spec()` to retrieve the full column specification for this data.
     ## i Specify the column types or set `show_col_types = FALSE` to quiet this message.
 
-We will focus on Baltimore, MD.
+There is data on victim names, age, sex, city and disposition. There are
+52178 observations for 14 variables. We will focus on Baltimore, MD.
 
 ``` r
 baltimore_df = 

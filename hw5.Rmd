@@ -26,7 +26,7 @@ scale_fill_discrete = scale_fill_viridis_d
 
 ## Problem 1
 
-First let's read in the data from the Washington Post, and do some data cleaning.  
+First let's read in the data from the Washington Post, and do some data cleaning. 
 
 ```{r}
 homicide_df = 
@@ -41,7 +41,7 @@ homicide_df =
   filter(city_state != "TulsaAL")
 ```
 
-We will focus on Baltimore, MD.
+There is data on victim names, age, sex, city and disposition. There are `r nrow(homicide_df)` observations for `r ncol(homicide_df)` variables. We will focus on Baltimore, MD.
 
 ```{r}
 baltimore_df = 
