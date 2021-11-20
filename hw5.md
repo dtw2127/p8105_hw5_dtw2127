@@ -139,18 +139,22 @@ observations on each subject over time.
 
 ``` r
 data %>% 
+  mutate(arm = recode(arm, "con" = "control", 
+                            "exp" = "experimental")) %>% 
   group_by(subject_id, week) %>% 
   ggplot(aes(x = week, y = observation_values, color = subject_id)) + 
   geom_point() + 
   geom_line(aes(group = subject_id)) + 
-  facet_grid( . ~arm)
+  facet_grid( . ~arm) + 
+  labs(title = "Observation values by week for control and experimental groups")
 ```
 
 <img src="hw5_files/figure-gfm/unnamed-chunk-7-1.png" width="90%" />
 
 For the control arm group, there isn’t an obvious trend in observation
-values over time. For the experimental group, there is an increasing
-trend in observation values as the number of weeks increases.
+values over time. All values are within -2.5 and 5. For the experimental
+group, there is an increasing trend in observation values as the number
+of weeks increases. The majority of values are within 0 and 7.5.
 
 ## Problem 3
 
